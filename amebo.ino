@@ -16,6 +16,9 @@
 #define MOTOR_IN3_PIN 14
 #define MOTOR_IN4_PIN 27
 
+#define WATER_PUMP_PIN 26 
+
+
 
 // Pin Definitions for RFID and Buzzer
 
@@ -308,10 +311,7 @@ void moveToCompartment(int compartmentNumber) {
   currentCompartment = compartmentNumber;
   delay(500); // Settling time
   
-  // Reset LCD after motor movement
-  lcd.init();
-  lcd.backlight();
-  delay(100);
+ 
 }
 
 // Function to print local time to Serial
@@ -572,21 +572,32 @@ void handleRFID() {
       }
     }
 
-    if (!moreMedicinesDue) {
-  lcd.clear();
-  lcd.print("Closing in:");
-  for(int i = 10; i > 0; i--) {
-    lcd.setCursor(0, 1);
-    lcd.print("     " + String(i) + "s     ");
-    delay(1000);
-  }
+   if (!moreMedicinesDue) {
+      lcd.clear();
+      lcd.print("Closing in:");
+      for(int i = 10; i > 0; i--) {
+        lcd.setCursor(0, 1);
+        lcd.print("     " + String(i) + "s     ");
+        delay(1000);
+      }
 
-  moveToCompartment(1);
-  alarmActive = false;
-  activeAlarmMed = -1;
-  lcd.clear();
-  displayIP();
-}
+      moveToCompartment(1);  // Close the compartment first
+      
+      // Now dispense water
+      lcd.clear();
+      lcd.print("Dispensing Water");
+      lcd.setCursor(0, 1);
+      lcd.print("Please Wait...");
+      
+      digitalWrite(WATER_PUMP_PIN, HIGH);  // Turn on the water pump
+      delay(5000);  // Wait for 5 seconds
+      digitalWrite(WATER_PUMP_PIN, LOW);   // Turn off the water pump
+      
+      alarmActive = false;
+      activeAlarmMed = -1;
+      lcd.clear();
+      displayIP();
+    }
   }
 
   rfid.PICC_HaltA();
@@ -603,6 +614,9 @@ void setup() {
   
   // Initialize pins and peripherals
   pinMode(BEEPER_PIN, OUTPUT);
+  pinMode(WATER_PUMP_PIN, OUTPUT);
+  digitalWrite(WATER_PUMP_PIN, LOW);  // Ensure the water pump is off initially
+  
   Wire.begin();
   lcd.init();
   lcd.backlight();
@@ -616,8 +630,6 @@ void setup() {
   // Initialize RFID
   SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, SS_PIN);
   rfid.PCD_Init();
-
-
 
   lcd.clear();
   lcd.print("Connecting WiFi..");
